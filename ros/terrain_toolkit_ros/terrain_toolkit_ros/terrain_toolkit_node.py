@@ -329,7 +329,7 @@ class TerrainToolkitNode(Node):
         try:
             self.tf_buffer.lookup_transform(
                 self.robot_frame, source_frame, stamp,
-                timeout=rclpy.duration.Duration(seconds=0.1),
+                timeout=rclpy.duration.Duration(seconds=1.0),
             )
         except TransformException as exc:
             self.get_logger().warn(f"TF lookup failed: {exc}")
@@ -477,14 +477,21 @@ class TerrainToolkitNode(Node):
 def main(args=None) -> None:
     rclpy.init(args=args)
     node = TerrainToolkitNode()
+    
+    from rclpy.executors import MultiThreadedExecutor
+
+    executor = MultiThreadedExecutor()
+
+    executor.add_node(node)
+
     try:
-        rclpy.spin(node)
+        executor.spin()
     except KeyboardInterrupt:
         pass
     finally:
+        executor.shutdown()
         node.destroy_node()
         rclpy.try_shutdown()
-
 
 if __name__ == "__main__":
     main()
