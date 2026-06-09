@@ -1,3 +1,14 @@
+## TAROS MULE HOW TO RUN THIS
+#### FIRST TIME
+1. `git clone git@github.com:herolada/terrain_toolkit.git`
+2. `cd terrain_toolkit/`
+3. `git checkout ros2-kilted`
+4. Create the virtual enviornment (e.g. using uv, also possible with pip or conda): `uv venv --system-site-packages && uv pip install -e .`
+#### EACH TIME
+5. Activate the environment via `source ros/dev-shell.sh`
+6. `ros2 launch terrain_toolkit_ros taros.launch.py`
+
+
 # Terrain Toolkit
 
 GPU-accelerated point cloud → heightmap → traversability cost map using
