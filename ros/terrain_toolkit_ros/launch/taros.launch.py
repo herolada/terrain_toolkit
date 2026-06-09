@@ -2,10 +2,13 @@
 # filter_support_ratio - put 0. to use all inpainted points
 
 """Launch terrain_toolkit_ros with Livox-tuned defaults."""
+import os
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from ament_index_python.packages import get_package_share_directory
 
 
 def generate_launch_description() -> LaunchDescription:
@@ -14,11 +17,14 @@ def generate_launch_description() -> LaunchDescription:
         # ROS / sensor
         DeclareLaunchArgument(
             "lidar_topic",
-            default_value="/ouster/points",
+            default_value="/ouster_left/points_filtered",
             description="PointCloud2 input topic",
         ),
         DeclareLaunchArgument(
-            "map_frame", default_value="map", description="Map TF frame (NOT USED!)"
+            "use_sim_time", default_value="false", description="Use simulation time"
+        ),
+        DeclareLaunchArgument(
+            "map_frame", default_value="os_sensor", description="Map TF frame (NOT USED!)"
         ),
         DeclareLaunchArgument(
             "robot_frame", default_value="base_link", description="Robot TF frame"
@@ -53,7 +59,7 @@ def generate_launch_description() -> LaunchDescription:
             description="Inpaint iterations per pyramid level",
         ),
         DeclareLaunchArgument(
-            "smooth_sigma", default_value="2.0", description="Gaussian smoothing sigma (m)"
+            "smooth_sigma", default_value="0.3", description="Gaussian smoothing sigma (m)"
         ),
         # Outlier
         DeclareLaunchArgument(
@@ -113,11 +119,11 @@ def generate_launch_description() -> LaunchDescription:
             "trav_slope_weight", default_value="0.2", description="Slope weight in combined cost"
         ),
         DeclareLaunchArgument(
-            "trav_step_weight", default_value="0.2", description="Step weight in combined cost"
+            "trav_step_weight", default_value="0.6", description="Step weight in combined cost"
         ),
         DeclareLaunchArgument(
             "trav_roughness_weight",
-            default_value="0.6",
+            default_value="0.2",
             description="Roughness weight in combined cost",
         ),
         # Temporal filter
@@ -138,7 +144,7 @@ def generate_launch_description() -> LaunchDescription:
         ),
         DeclareLaunchArgument(
             "filter_inflation_sigma_m",
-            default_value="2.0",
+            default_value="1.9",
             description="Gaussian sigma for obstacle dilation (m)",
         ),
         DeclareLaunchArgument(
@@ -165,6 +171,16 @@ def generate_launch_description() -> LaunchDescription:
 
     lc = LaunchConfiguration
 
+    launch_dir = os.path.join(get_package_share_directory("terrain_toolkit_ros"), "launch")
+
+    lidar_tf = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(launch_dir, "lidar_tf.launch.py"))
+    )
+
+    lidar_body_filter = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(launch_dir, "lidar_body_filter.launch.py"))
+    )
+
     node = Node(
         package="terrain_toolkit_ros",
         executable="terrain_toolkit_node",
@@ -172,6 +188,7 @@ def generate_launch_description() -> LaunchDescription:
         output="screen",
         parameters=[
             {
+                "use_sim_time": lc("use_sim_time"),
                 # ROS / sensor
                 "lidar_topic": lc("lidar_topic"),
                 "map_frame": lc("map_frame"),
@@ -218,4 +235,4 @@ def generate_launch_description() -> LaunchDescription:
         ],
     )
 
-    return LaunchDescription(args + [node])
+    return LaunchDescription(args + [lidar_tf, lidar_body_filter, node])
