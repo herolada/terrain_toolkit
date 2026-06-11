@@ -4,7 +4,7 @@
   <name>terrain_toolkit_ros</name>
   <version>0.1.0</version>
   <description>
-    ROS 2 Kilted wrapper for the terrain_toolkit library — bridges a LiDAR
+    ROS 2 wrapper for the terrain_toolkit library — bridges a LiDAR
     PointCloud2 stream to the GPU pipeline and republishes the resulting
     grid as a PointCloud2 with one float32 field per TerrainMap layer.
   </description>
@@ -12,15 +12,16 @@
   <maintainer email="kuceral4@fel.cvut.cz">Ales Kucera</maintainer>
   <license>Apache-2.0</license>
 
-  <!-- runtime dependencies -->
-  <depend>rclpy</depend>
-  <depend>sensor_msgs</depend>
-  <depend>geometry_msgs</depend>
-  <depend>tf2_ros</depend>
-  <depend>tf2_sensor_msgs</depend>
-  <depend>sensor_msgs_py</depend>
+  <buildtool_depend>ament_python</buildtool_depend>
 
-  <!-- test dependencies -->
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>tf2_sensor_msgs</exec_depend>
+  <exec_depend>sensor_msgs_py</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
 

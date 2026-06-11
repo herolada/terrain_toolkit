@@ -21,13 +21,12 @@ RTX A500 laptop GPU (≈180 FPS).
 
 ## Install
 
-```bash
-uv sync                 # runtime
-uv sync --group dev     # + matplotlib, plotly
-```
+Build as a ROS 2 package (`terrain_toolkit_ros`) in a colcon workspace, or use
+the `taros_autonomy_ws` submodule layout. Install `warp-lang` once via pip.
+See the repository [README](../README.md) for build and run commands.
 
-Requirements: Python ≥ 3.12, NVIDIA GPU with CUDA support,
-[uv](https://docs.astral.sh/uv/).
+Requirements: Python ≥ 3.12, NVIDIA GPU with CUDA support, `python3-numpy`,
+`warp-lang`.
 
 ## Quick start
 

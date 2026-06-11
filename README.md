@@ -1,13 +1,49 @@
-## TAROS MULE HOW TO RUN THIS
-#### FIRST TIME
-1. `git clone git@github.com:herolada/terrain_toolkit.git`
-2. `cd terrain_toolkit/`
-3. `git checkout ros2-kilted`
-4. Create the virtual enviornment (e.g. using uv, also possible with pip or conda): `uv venv --system-site-packages && uv pip install -e .`
-#### EACH TIME
-5. Activate the environment via `source ros/dev-shell.sh`
-6. `ros2 launch terrain_toolkit_ros taros.launch.py`
+## TAROS / ROS 2
 
+When used as a submodule in `taros_autonomy_ws` (`src/terrain_toolkit`):
+
+```bash
+# One-time external dependency (public NVIDIA wheel — not this package)
+pip install 'warp-lang>=1.12.1'
+
+# From workspace root
+./rebuild_specific.sh terrain_toolkit_ros
+source install/local_setup.bash
+ros2 launch terrain_toolkit_ros taros.launch.py
+```
+
+The library is installed by colcon into the workspace overlay — **do not** `pip install` this repo.
+
+## Requirements
+
+- Python ≥ 3.12 (ROS 2 Kilted)
+- NVIDIA GPU with CUDA support
+- `python3-numpy` (from ROS / system)
+- `warp-lang` (install once via pip)
+
+## Build (colcon)
+
+Clone into a colcon workspace as `src/terrain_toolkit`, then:
+
+```bash
+cd <ws>
+colcon build --packages-select terrain_toolkit_ros --symlink-install
+source install/local_setup.bash
+```
+
+## Offline / library usage
+
+After sourcing the workspace overlay, Python scripts at the repo root can import the library:
+
+```bash
+source install/local_setup.bash
+python3 example.py
+python3 test_synthetic.py --preset noisy
+python3 test_ouster.py --path ouster.npy
+python3 profile_pipeline.py --path ouster.npy
+```
+
+Optional dev plotting deps: `pip install matplotlib plotly`
 
 # Terrain Toolkit
 
@@ -31,19 +67,6 @@ RTX A500 laptop GPU (≈180 FPS).
 | Post-process | `traversability/` | `ObstacleInflator`, `TemporalGate`, `SupportRatioMask` |
 | Orchestration | `pipeline.py` | `TerrainPipeline` — points in, `TerrainMap` out |
 | ICP | `icp/` | `IcpAligner` — GPU-native point-to-point ICP (standalone, not in the pipeline) |
-
-## Requirements
-
-- Python ≥ 3.12
-- NVIDIA GPU with CUDA support
-- [uv](https://docs.astral.sh/uv/)
-
-## Install
-
-```bash
-uv sync          # runtime
-uv sync --group dev   # + matplotlib, plotly
-```
 
 ## Quick start
 
@@ -83,9 +106,4 @@ See [`example.py`](example.py) for a fully-explicit configuration and
 
 ## Test scripts
 
-```bash
-uv run python example.py                              # synthetic data
-uv run python test_synthetic.py --preset noisy        # tilted plane + bump
-uv run python test_ouster.py --path ouster.npy        # real lidar
-uv run python profile_pipeline.py --path ouster.npy   # per-stage profile
-```
+See [Offline / library usage](#offline--library-usage) above.

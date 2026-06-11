@@ -1,22 +1,37 @@
-from setuptools import setup, find_packages
+import os
+from glob import glob
+
+from setuptools import setup
+
+package_name = "terrain_toolkit_ros"
 
 setup(
-    name="terrain-toolkit",
+    name=package_name,
     version="0.1.0",
-    description="Add your description here",
-    long_description=open("README.md").read(),
-    long_description_content_type="text/markdown",
-    python_requires=">=3.12",
-    package_dir={"": "src"},
-    packages=find_packages(where="src"),
-    install_requires=[
-        "numpy>=1.21.0",
-        "warp-lang>=1.12.1",
+    packages=[
+        "terrain_toolkit",
+        "terrain_toolkit.heightmap",
+        "terrain_toolkit.traversability",
+        "terrain_toolkit.outlier",
+        "terrain_toolkit.icp",
+        "terrain_toolkit_ros",
     ],
-    extras_require={
-        "dev": [
-            "matplotlib>=3.10.8",
-            "plotly>=6.7.0",
+    data_files=[
+        ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
+        (os.path.join("share", package_name), ["package.xml"]),
+        (os.path.join("share", package_name, "launch"), glob("launch/*.py")),
+        (os.path.join("share", package_name, "rviz"), glob("rviz/*.rviz")),
+    ],
+    install_requires=["setuptools"],
+    zip_safe=True,
+    maintainer="Ales Kucera",
+    maintainer_email="kuceral4@fel.cvut.cz",
+    description="ROS 2 wrapper for the terrain_toolkit GPU terrain pipeline.",
+    license="Apache-2.0",
+    tests_require=["pytest"],
+    entry_points={
+        "console_scripts": [
+            "terrain_toolkit_node = terrain_toolkit_ros.terrain_toolkit_node:main",
         ],
     },
 )
