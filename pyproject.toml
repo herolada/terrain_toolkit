@@ -5,7 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "numpy>=2.4.4",
+    "numpy>=1.21.0",
     "warp-lang>=1.12.1",
 ]
 

@@ -10,7 +10,7 @@ setup(
     package_dir={"": "src"},
     packages=find_packages(where="src"),
     install_requires=[
-        "numpy>=2.4.4",
+        "numpy>=1.21.0",
         "warp-lang>=1.12.1",
     ],
     extras_require={
