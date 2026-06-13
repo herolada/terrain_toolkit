@@ -17,7 +17,7 @@ def generate_launch_description() -> LaunchDescription:
         # ROS / sensor
         DeclareLaunchArgument(
             "lidar_topic",
-            default_value="/ouster_left/points_filtered",
+            default_value="/all_lidar/filtered",
             description="PointCloud2 input topic",
         ),
         DeclareLaunchArgument(
@@ -235,4 +235,4 @@ def generate_launch_description() -> LaunchDescription:
         ],
     )
 
-    return LaunchDescription(args + [lidar_tf, lidar_body_filter, node])
+    return LaunchDescription(args + [lidar_body_filter, node])
