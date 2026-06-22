@@ -20,7 +20,7 @@ def generate_launch_description() -> LaunchDescription:
         ),
         DeclareLaunchArgument(
             "robot_frame_ga",
-            default_value="os_sensor",
+            default_value="os_sensor_no_roll_pitch",
             description="Gravity-aligned robot TF frame the heightmap is built in "
             "(use a real gravity-aligned frame on non-flat terrain)",
         ),
@@ -37,7 +37,7 @@ def generate_launch_description() -> LaunchDescription:
         ),
         # Pipeline
         DeclareLaunchArgument(
-            "z_max", default_value="1.5", description="Discard points above this height (m)"
+            "z_max", default_value="0.5", description="Discard points above this height (m)"
         ),
         DeclareLaunchArgument(
             "primary", default_value="max", description="Height reduction: max | mean | min"
@@ -54,7 +54,7 @@ def generate_launch_description() -> LaunchDescription:
             description="Inpaint iterations per pyramid level",
         ),
         DeclareLaunchArgument(
-            "smooth_sigma", default_value="0.8", description="Gaussian smoothing sigma (m)"
+            "smooth_sigma", default_value="0.35", description="Gaussian smoothing sigma (m)"
         ),
         # Outlier
         DeclareLaunchArgument(
@@ -82,7 +82,7 @@ def generate_launch_description() -> LaunchDescription:
         ),
         DeclareLaunchArgument(
             "trav_max_slope_deg",
-            default_value="30.0",
+            default_value="20.0",
             description="Slope saturating cost to 1 (deg)",
         ),
         DeclareLaunchArgument(
@@ -92,7 +92,7 @@ def generate_launch_description() -> LaunchDescription:
         ),
         DeclareLaunchArgument(
             "trav_max_drop_height_m",
-            default_value="0.3",
+            default_value="0.2",
             description="Downward drop saturating cost to 1 (m)",
         ),
         DeclareLaunchArgument(
@@ -102,12 +102,12 @@ def generate_launch_description() -> LaunchDescription:
         ),
         DeclareLaunchArgument(
             "trav_step_window_radius_m",
-            default_value="0.2",
+            default_value="0.4",
             description="Morphological window radius for step detection (m)",
         ),
         DeclareLaunchArgument(
             "trav_roughness_window_radius_m",
-            default_value="0.3",
+            default_value="0.4",
             description="Window radius for roughness std-dev (m)",
         ),
         DeclareLaunchArgument(
@@ -129,22 +129,22 @@ def generate_launch_description() -> LaunchDescription:
         ),
         DeclareLaunchArgument(
             "filter_support_radius_m",
-            default_value="0.5",
+            default_value="0.2",
             description="Neighborhood radius for support check (m)",
         ),
         DeclareLaunchArgument(
             "filter_support_ratio",
-            default_value="0.05",
+            default_value="0.25",
             description="Min fraction of measured cells to keep",
         ),
         DeclareLaunchArgument(
             "filter_inflation_sigma_m",
-            default_value="0.5",
+            default_value="0.6",
             description="Gaussian sigma for obstacle dilation (m)",
         ),
         DeclareLaunchArgument(
             "filter_obstacle_threshold",
-            default_value="0.8",
+            default_value="0.75",
             description="Cost threshold for obstacle source",
         ),
         DeclareLaunchArgument(
@@ -170,14 +170,14 @@ def generate_launch_description() -> LaunchDescription:
         ),
         DeclareLaunchArgument(
             "footprint_robot_height",
-            default_value="0.8",
+            default_value="0.9",
             description="Vertical distance robot frame → ground (m)",
         ),
         DeclareLaunchArgument(
-            "footprint_half_x", default_value="1.0", description="Footprint half-extent along x (m)"
+            "footprint_half_x", default_value="1.65", description="Footprint half-extent along x (m)"
         ),
         DeclareLaunchArgument(
-            "footprint_half_y", default_value="1.0", description="Footprint half-extent along y (m)"
+            "footprint_half_y", default_value="1.9", description="Footprint half-extent along y (m)"
         ),
         DeclareLaunchArgument(
             "footprint_center_x",
