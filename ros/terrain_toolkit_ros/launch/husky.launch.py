@@ -258,6 +258,9 @@ def generate_launch_description() -> LaunchDescription:
                 "footprint_mode": lc("footprint_mode"),
             }
         ],
+        remappings=[
+            ("terrain_occupancy","/terrain/map_occupancy_grid"),
+        ]
     )
 
     return LaunchDescription(args + [node])

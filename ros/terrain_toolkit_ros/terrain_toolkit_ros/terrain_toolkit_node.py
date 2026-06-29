@@ -25,6 +25,7 @@ from geometry_msgs.msg import TransformStamped
 
 from sensor_msgs.msg import PointCloud2, PointField
 from sensor_msgs_py import point_cloud2 as pc2
+from nav_msgs.msg import OccupancyGrid
 from std_msgs.msg import Header
 
 from terrain_toolkit import (
@@ -105,6 +106,7 @@ class TerrainToolkitNode(Node):
             PointCloud2, self.lidar_topic, self._cloud_callback, 10,
         )
         self.pub = self.create_publisher(PointCloud2, "terrain_map", 10)
+        self.occupancy_pub = self.create_publisher(OccupancyGrid, "terrain_occupancy", 10)
 
         self._build_pipeline(p)
         self.add_on_set_parameters_callback(self._on_parameters_changed)
@@ -429,6 +431,16 @@ class TerrainToolkitNode(Node):
         if out_cloud is not None:
             self.pub.publish(out_cloud)
 
+        occ_grid = self._grid_to_occupancy_grid(
+            terrain_map=terrain_map,
+            x_min=-self.x_range,
+            y_min=-self.y_range,
+            resolution=self.resolution,
+            stamp=stamp,
+        )
+        if occ_grid is not None:
+            self.occupancy_pub.publish(occ_grid)
+
     # ------------------------------------------------------------------
     # Flat-footprint ground plane
     # ------------------------------------------------------------------
@@ -555,6 +567,59 @@ class TerrainToolkitNode(Node):
         cloud_msg.is_dense = False
         cloud_msg.data = point_data.astype(np.float32).tobytes()
         return cloud_msg
+
+    # ------------------------------------------------------------------
+    # Grid → OccupancyGrid
+    # ------------------------------------------------------------------
+
+    def _grid_to_occupancy_grid(
+        self,
+        terrain_map: TerrainMap,
+        x_min: float,
+        y_min: float,
+        resolution: float,
+        stamp,
+    ) -> OccupancyGrid | None:
+        """Project the traversability cost layer onto a nav_msgs/OccupancyGrid.
+
+        Cost in [0, 1] is scaled to the OccupancyGrid range [0, 100]; cells with
+        no usable estimate (NaN cost / elevation) become -1 (unknown). Falls back
+        to elevation finiteness when the traversability layer is disabled, marking
+        every measured cell as free (0).
+        """
+        source = terrain_map.traversability
+        if source is None:
+            source = terrain_map.elevation
+            if source is None:
+                self.get_logger().warn(
+                    "TerrainMap has no traversability or elevation — skipping occupancy publish.")
+                return None
+            # No cost signal: measured = free, missing = unknown.
+            cost = np.where(np.isfinite(source), 0.0, np.nan)
+        else:
+            cost = source
+
+        rows, cols = cost.shape  # (ny, nx)
+
+        # OccupancyGrid is int8, row-major (x fastest), origin at cell (0, 0).
+        # The numpy grid is already laid out as [row=y, col=x], so a C-order
+        # ravel matches that ordering directly.
+        finite = np.isfinite(cost)
+        scaled = np.clip(np.nan_to_num(cost, nan=0.0) * 100.0, 0.0, 100.0)
+        data = np.where(finite, np.round(scaled), -1).astype(np.int8)
+
+        grid = OccupancyGrid()
+        grid.header.stamp = stamp
+        grid.header.frame_id = self.robot_frame_ga
+        grid.info.resolution = float(resolution)
+        grid.info.width = int(cols)
+        grid.info.height = int(rows)
+        grid.info.origin.position.x = float(x_min)
+        grid.info.origin.position.y = float(y_min)
+        grid.info.origin.position.z = 0.0
+        grid.info.origin.orientation.w = 1.0
+        grid.data = data.ravel().tolist()
+        return grid
 
     # ------------------------------------------------------------------
     # TF transform
