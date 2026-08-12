@@ -1,14 +1,8 @@
-# filter_support_radius_m - some points are lost some obtained (more blob like)
-# filter_support_ratio - put 0. to use all inpainted points
-
-"""Launch terrain_toolkit_ros with Livox-tuned defaults."""
-import os
+"""Launch terrain_toolkit_ros with Ouster-tuned defaults."""
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
-from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
-from ament_index_python.packages import get_package_share_directory
 
 
 def generate_launch_description() -> LaunchDescription:
@@ -16,33 +10,36 @@ def generate_launch_description() -> LaunchDescription:
     args = [
         # ROS / sensor
         DeclareLaunchArgument(
-            "lidar_topic",
-            default_value="/ouster_left/points_filtered",
-            description="PointCloud2 input topic",
+            "lidar_topic", default_value="/os2/points_filtered", description="PointCloud2 input topic"
         ),
         DeclareLaunchArgument(
-            "use_sim_time", default_value="false", description="Use simulation time"
+            "map_frame", default_value="map", description="Map TF frame (unused)"
         ),
         DeclareLaunchArgument(
-            "map_frame", default_value="os_sensor", description="Map TF frame (NOT USED!)"
+            "robot_frame_ga",
+            default_value="base_link_level",
+            description="Gravity-aligned robot TF frame the heightmap is built in "
+            "(use a real gravity-aligned frame on non-flat terrain)",
         ),
         DeclareLaunchArgument(
-            "robot_frame", default_value="base_link", description="Robot TF frame"
+            "robot_frame",
+            default_value="base_link",
+            description="Normal (un-leveled) robot body TF frame; used for the flat-footprint plane",
         ),
         DeclareLaunchArgument(
-            "square_half_size", default_value="25.0", description="Half-side of square ROI (m)"
+            "square_half_size", default_value="10.0", description="Half-side of square ROI (m)"
         ),
         # Grid
         DeclareLaunchArgument("resolution", default_value="0.4", description="Grid cell size (m)"),
         DeclareLaunchArgument(
-            "x_range", default_value="25.0", description="Grid half-extent in x (m)"
+            "x_range", default_value="30.0", description="Grid half-extent in x (m)"
         ),
         DeclareLaunchArgument(
-            "y_range", default_value="25.0", description="Grid half-extent in y (m)"
+            "y_range", default_value="30.0", description="Grid half-extent in y (m)"
         ),
         # Pipeline
         DeclareLaunchArgument(
-            "z_max", default_value="2.5", description="Discard points above this height (m)"
+            "z_max", default_value="1.0", description="Discard points above this height (m)"
         ),
         DeclareLaunchArgument(
             "primary", default_value="max", description="Height reduction: max | mean | min"
@@ -51,7 +48,7 @@ def generate_launch_description() -> LaunchDescription:
             "inpaint", default_value="true", description="Enable multigrid inpainting"
         ),
         DeclareLaunchArgument(
-            "inpaint_coarse_iters", default_value="200", description="Inpaint coarse iterations"
+            "inpaint_coarse_iters", default_value="50", description="Inpaint coarse iterations"
         ),
         DeclareLaunchArgument(
             "inpaint_iters_per_level",
@@ -63,18 +60,18 @@ def generate_launch_description() -> LaunchDescription:
         ),
         # Outlier
         DeclareLaunchArgument(
-            "outlier_enable", default_value="false", description="Enable outlier filtering"
+            "outlier_enable", default_value="true", description="Enable outlier filtering"
         ),
         DeclareLaunchArgument(
             "outlier_type", default_value="ror", description="Outlier algorithm: ror | sor"
         ),
         DeclareLaunchArgument(
             "outlier_search_radius_m",
-            default_value="0.25",
+            default_value="0.5",
             description="Neighbor search radius (m)",
         ),
         DeclareLaunchArgument(
-            "outlier_min_neighbors", default_value="10", description="Min neighbors within radius"
+            "outlier_min_neighbors", default_value="5", description="Min neighbors within radius"
         ),
         DeclareLaunchArgument(
             "outlier_std_multiplier",
@@ -92,38 +89,38 @@ def generate_launch_description() -> LaunchDescription:
         ),
         DeclareLaunchArgument(
             "trav_max_step_height_m",
-            default_value="0.6",
+            default_value="0.55",
             description="Upward step saturating cost to 1 (m)",
         ),
         DeclareLaunchArgument(
             "trav_max_drop_height_m",
-            default_value="0.5",
+            default_value="0.3",
             description="Downward drop saturating cost to 1 (m)",
         ),
         DeclareLaunchArgument(
             "trav_max_roughness_m",
-            default_value="0.4",
+            default_value="0.2",
             description="Roughness saturating cost to 1 (m)",
         ),
         DeclareLaunchArgument(
             "trav_step_window_radius_m",
-            default_value="0.4",
+            default_value="0.15",
             description="Morphological window radius for step detection (m)",
         ),
         DeclareLaunchArgument(
             "trav_roughness_window_radius_m",
-            default_value="0.4",
+            default_value="0.3",
             description="Window radius for roughness std-dev (m)",
         ),
         DeclareLaunchArgument(
             "trav_slope_weight", default_value="0.2", description="Slope weight in combined cost"
         ),
         DeclareLaunchArgument(
-            "trav_step_weight", default_value="0.6", description="Step weight in combined cost"
+            "trav_step_weight", default_value="0.2", description="Step weight in combined cost"
         ),
         DeclareLaunchArgument(
             "trav_roughness_weight",
-            default_value="0.2",
+            default_value="0.6",
             description="Roughness weight in combined cost",
         ),
         # Temporal filter
@@ -134,22 +131,22 @@ def generate_launch_description() -> LaunchDescription:
         ),
         DeclareLaunchArgument(
             "filter_support_radius_m",
-            default_value="2.0",
+            default_value="0.5",
             description="Neighborhood radius for support check (m)",
         ),
         DeclareLaunchArgument(
             "filter_support_ratio",
-            default_value="0.05",
+            default_value="0.5",
             description="Min fraction of measured cells to keep",
         ),
         DeclareLaunchArgument(
             "filter_inflation_sigma_m",
-            default_value="1.9",
+            default_value="1.0",
             description="Gaussian sigma for obstacle dilation (m)",
         ),
         DeclareLaunchArgument(
             "filter_obstacle_threshold",
-            default_value="0.7",
+            default_value="0.8",
             description="Cost threshold for obstacle source",
         ),
         DeclareLaunchArgument(
@@ -167,19 +164,62 @@ def generate_launch_description() -> LaunchDescription:
             default_value="10",
             description="Skip hysteresis until this many obstacles seen",
         ),
+        # Occlusion (line-of-sight) masking
+        DeclareLaunchArgument(
+            "occlusion_enable", default_value="true",
+            description="NaN-out cost in the line-of-sight shadow of obstacles",
+        ),
+        DeclareLaunchArgument(
+            "occlusion_sensor_x", default_value="0.0",
+            description="Sensor x in the gravity-aligned grid frame (m)",
+        ),
+        DeclareLaunchArgument(
+            "occlusion_sensor_y", default_value="0.0",
+            description="Sensor y in the gravity-aligned grid frame (m)",
+        ),
+        DeclareLaunchArgument(
+            "occlusion_sensor_z", default_value="0.0",
+            description="Sensor height above the grid origin (m)",
+        ),
+        DeclareLaunchArgument(
+            "occlusion_angle_eps_deg", default_value="0.0",
+            description="View-angle margin guarding flat-ground noise (deg)",
+        ),
+        # Flat ground footprint
+        DeclareLaunchArgument(
+            "footprint_enable",
+            default_value="true",
+            description="Force a flat ground patch under the robot",
+        ),
+        DeclareLaunchArgument(
+            "footprint_robot_height",
+            default_value="0.94",
+            description="Vertical distance robot frame → ground (m)",
+        ),
+        DeclareLaunchArgument(
+            "footprint_half_x", default_value="10.0", description="Footprint half-extent along x (m)"
+        ),
+        DeclareLaunchArgument(
+            "footprint_half_y", default_value="10.0", description="Footprint half-extent along y (m)"
+        ),
+        DeclareLaunchArgument(
+            "footprint_center_x",
+            default_value="0.0",
+            description="Footprint center offset along x (m)",
+        ),
+        DeclareLaunchArgument(
+            "footprint_center_y",
+            default_value="0.0",
+            description="Footprint center offset along y (m)",
+        ),
+        DeclareLaunchArgument(
+            "footprint_mode",
+            default_value="fill",
+            description="Footprint fill mode: overwrite | fill",
+        ),
     ]
 
     lc = LaunchConfiguration
-
-    launch_dir = os.path.join(get_package_share_directory("terrain_toolkit_ros"), "launch")
-
-    lidar_tf = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(launch_dir, "lidar_tf.launch.py"))
-    )
-
-    lidar_body_filter = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(launch_dir, "lidar_body_filter.launch.py"))
-    )
 
     node = Node(
         package="terrain_toolkit_ros",
@@ -188,10 +228,10 @@ def generate_launch_description() -> LaunchDescription:
         output="screen",
         parameters=[
             {
-                "use_sim_time": lc("use_sim_time"),
                 # ROS / sensor
                 "lidar_topic": lc("lidar_topic"),
                 "map_frame": lc("map_frame"),
+                "robot_frame_ga": lc("robot_frame_ga"),
                 "robot_frame": lc("robot_frame"),
                 "square_half_size": lc("square_half_size"),
                 # Grid
@@ -231,8 +271,22 @@ def generate_launch_description() -> LaunchDescription:
                 "filter_obstacle_growth_threshold": lc("filter_obstacle_growth_threshold"),
                 "filter_rejection_limit_frames": lc("filter_rejection_limit_frames"),
                 "filter_min_obstacle_baseline": lc("filter_min_obstacle_baseline"),
+                # Occlusion masking
+                "occlusion_enable": lc("occlusion_enable"),
+                "occlusion_sensor_x": lc("occlusion_sensor_x"),
+                "occlusion_sensor_y": lc("occlusion_sensor_y"),
+                "occlusion_sensor_z": lc("occlusion_sensor_z"),
+                "occlusion_angle_eps_deg": lc("occlusion_angle_eps_deg"),
+                # Flat ground footprint
+                "footprint_enable": lc("footprint_enable"),
+                "footprint_robot_height": lc("footprint_robot_height"),
+                "footprint_half_x": lc("footprint_half_x"),
+                "footprint_half_y": lc("footprint_half_y"),
+                "footprint_center_x": lc("footprint_center_x"),
+                "footprint_center_y": lc("footprint_center_y"),
+                "footprint_mode": lc("footprint_mode"),
             }
         ],
     )
 
-    return LaunchDescription(args + [lidar_tf, lidar_body_filter, node])
+    return LaunchDescription(args + [node])
