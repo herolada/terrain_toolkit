@@ -25,19 +25,21 @@ def generate_launch_description():
     #     ],
     # )
 
-    left_lidar_body_filter = Node(
+    outter_lidar_body_filter = Node(
         package='pcl_ros',
         executable='filter_crop_box_node',
-        name='left_lidar_body_filter',
+        name='outter_lidar_body_filter',
         parameters=[
             {
-                'min_x': -3.0,
-                'max_x': 0.0,
-                'min_y': -1.1,
-                'max_y': 1.1,
-                'min_z': -2.0,
-                'max_z': 2.0,
-                'negative': True,
+                'min_x': -15.0,
+                'max_x': 15.0,
+                'min_y': -15.0,
+                'max_y': 15.0,
+                'min_z': -1.5,
+                'max_z': 0.5,
+                'negative': False,
+                'input_frame': "base_link",
+                'output_frame': "base_link",
             }
         ],
         remappings=[
@@ -47,6 +49,6 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        left_lidar_body_filter,
+        outter_lidar_body_filter,
         # right_lidar_body_filter,
     ])

@@ -10,7 +10,7 @@ def generate_launch_description() -> LaunchDescription:
     args = [
         # ROS / sensor
         DeclareLaunchArgument(
-            "lidar_topic", default_value="/os2/points_filtered", description="PointCloud2 input topic"
+            "lidar_topic", default_value="/lili/mapping/cloud_registered_filtered", description="PointCloud2 input topic"
         ),
         DeclareLaunchArgument(
             "map_frame", default_value="map", description="Map TF frame (unused)"
@@ -27,19 +27,19 @@ def generate_launch_description() -> LaunchDescription:
             description="Normal (un-leveled) robot body TF frame; used for the flat-footprint plane",
         ),
         DeclareLaunchArgument(
-            "square_half_size", default_value="10.0", description="Half-side of square ROI (m)"
+            "square_half_size", default_value="0.5", description="Half-side of square ROI (m)"
         ),
         # Grid
         DeclareLaunchArgument("resolution", default_value="0.4", description="Grid cell size (m)"),
         DeclareLaunchArgument(
-            "x_range", default_value="30.0", description="Grid half-extent in x (m)"
+            "x_range", default_value="16.0", description="Grid half-extent in x (m)"
         ),
         DeclareLaunchArgument(
-            "y_range", default_value="30.0", description="Grid half-extent in y (m)"
+            "y_range", default_value="16.0", description="Grid half-extent in y (m)"
         ),
         # Pipeline
         DeclareLaunchArgument(
-            "z_max", default_value="1.0", description="Discard points above this height (m)"
+            "z_max", default_value="1.2", description="Discard points above this height (m)"
         ),
         DeclareLaunchArgument(
             "primary", default_value="max", description="Height reduction: max | mean | min"
@@ -56,11 +56,12 @@ def generate_launch_description() -> LaunchDescription:
             description="Inpaint iterations per pyramid level",
         ),
         DeclareLaunchArgument(
-            "smooth_sigma", default_value="0.3", description="Gaussian smoothing sigma (m)"
+            "smooth_sigma", default_value="0.2", description="Gaussian smoothing sigma (m)"
         ),
         # Outlier
+        # TODO set TRUE but only JETSON
         DeclareLaunchArgument(
-            "outlier_enable", default_value="true", description="Enable outlier filtering"
+            "outlier_enable", default_value="false", description="Enable outlier filtering"
         ),
         DeclareLaunchArgument(
             "outlier_type", default_value="ror", description="Outlier algorithm: ror | sor"
@@ -84,49 +85,49 @@ def generate_launch_description() -> LaunchDescription:
         ),
         DeclareLaunchArgument(
             "trav_max_slope_deg",
-            default_value="60.0",
+            default_value="45.0",
             description="Slope saturating cost to 1 (deg)",
         ),
         DeclareLaunchArgument(
             "trav_max_step_height_m",
-            default_value="0.55",
+            default_value="0.6",
             description="Upward step saturating cost to 1 (m)",
         ),
         DeclareLaunchArgument(
             "trav_max_drop_height_m",
-            default_value="0.3",
+            default_value="0.5",
             description="Downward drop saturating cost to 1 (m)",
         ),
         DeclareLaunchArgument(
             "trav_max_roughness_m",
-            default_value="0.2",
+            default_value="1.0",
             description="Roughness saturating cost to 1 (m)",
         ),
         DeclareLaunchArgument(
             "trav_step_window_radius_m",
-            default_value="0.15",
+            default_value="0.4",
             description="Morphological window radius for step detection (m)",
         ),
         DeclareLaunchArgument(
             "trav_roughness_window_radius_m",
-            default_value="0.3",
+            default_value="0.4",
             description="Window radius for roughness std-dev (m)",
         ),
         DeclareLaunchArgument(
-            "trav_slope_weight", default_value="0.2", description="Slope weight in combined cost"
+            "trav_slope_weight", default_value="0.3", description="Slope weight in combined cost"
         ),
         DeclareLaunchArgument(
-            "trav_step_weight", default_value="0.2", description="Step weight in combined cost"
+            "trav_step_weight", default_value="0.4", description="Step weight in combined cost"
         ),
         DeclareLaunchArgument(
             "trav_roughness_weight",
-            default_value="0.6",
+            default_value="0.3",
             description="Roughness weight in combined cost",
         ),
         # Temporal filter
         DeclareLaunchArgument(
             "filter_enable",
-            default_value="true",
+            default_value="false",
             description="Enable obstacle inflation + temporal gate",
         ),
         DeclareLaunchArgument(
@@ -141,7 +142,7 @@ def generate_launch_description() -> LaunchDescription:
         ),
         DeclareLaunchArgument(
             "filter_inflation_sigma_m",
-            default_value="1.0",
+            default_value="2.0",
             description="Gaussian sigma for obstacle dilation (m)",
         ),
         DeclareLaunchArgument(
@@ -151,12 +152,12 @@ def generate_launch_description() -> LaunchDescription:
         ),
         DeclareLaunchArgument(
             "filter_obstacle_growth_threshold",
-            default_value="2.0",
+            default_value="5.0",
             description="Reject frame if obstacle count grows by this factor",
         ),
         DeclareLaunchArgument(
             "filter_rejection_limit_frames",
-            default_value="5",
+            default_value="3",
             description="Force-accept after this many consecutive rejections",
         ),
         DeclareLaunchArgument(
