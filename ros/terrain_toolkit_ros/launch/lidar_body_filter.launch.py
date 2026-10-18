@@ -25,30 +25,49 @@ def generate_launch_description():
     #     ],
     # )
 
-    outter_lidar_body_filter = Node(
+    left_lidar_body_filter = Node(
         package='pcl_ros',
         executable='filter_crop_box_node',
-        name='outter_lidar_body_filter',
+        name='left_lidar_body_filter',
         parameters=[
             {
-                'min_x': -15.0,
-                'max_x': 15.0,
-                'min_y': -15.0,
-                'max_y': 15.0,
-                'min_z': -1.5,
-                'max_z': 0.5,
-                'negative': False,
-                'input_frame': "base_link",
-                'output_frame': "base_link",
+                'min_y': -2.0,
+                'max_y': 2.0,
+                'min_x': -3.0,
+                'max_x': 1.7,
+                'min_z': -3.0,
+                'max_z': 3.0,
+                'negative': True,
             }
         ],
         remappings=[
-            ('input', '/os2/points'),
-            ('output', '/os2/points_filtered'),
+            ('input', '/os/merged_cloud'),
+            ('output', '/os/merged_cloud_filtered_temp'),
+        ],
+    )
+
+    bug_lidar_body_filter = Node(
+        package='pcl_ros',
+        executable='filter_crop_box_node',
+        name='bug_lidar_body_filter',
+        parameters=[
+            {
+                'min_y': -0.9,
+                'max_y': 0.9,
+                'min_x': 2.3,
+                'max_x': 3.5,
+                'min_z': -0.2,
+                'max_z': 0.6,
+                'negative': True,
+            }
+        ],
+        remappings=[
+            ('input', '/os/merged_cloud_filtered_temp'),
+            ('output', '/os/merged_cloud_filtered'),
         ],
     )
 
     return LaunchDescription([
-        outter_lidar_body_filter,
-        # right_lidar_body_filter,
+        left_lidar_body_filter,
+        bug_lidar_body_filter,
     ])
