@@ -9,7 +9,16 @@ with one float32 PointField per TerrainMap layer.
 
 from __future__ import annotations
 
+import array
+import os
+
+# NumPy's OpenBLAS worker threads busy-wait after every multithreaded BLAS call,
+# keeping several cores pegged on a Jetson. Nothing here needs threaded BLAS.
+# Must be set before numpy is first imported.
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+
 import numpy as np
+from numpy.lib.recfunctions import structured_to_unstructured
 import rclpy
 from rclpy.node import Node
 from rcl_interfaces.msg import (
@@ -38,6 +47,11 @@ from terrain_toolkit import (
     TerrainPipeline,
     TraversabilityConfig,
 )
+
+
+# Keep only the newest cloud: if a frame takes longer than the LiDAR period, a
+# deeper queue would make the node process stale clouds back-to-back forever.
+_CLOUD_QUEUE_DEPTH = 1
 
 
 def _quaternion_to_matrix(x: float, y: float, z: float, w: float) -> np.ndarray:
@@ -103,7 +117,7 @@ class TerrainToolkitNode(Node):
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
 
         self.sub = self.create_subscription(
-            PointCloud2, self.lidar_topic, self._cloud_callback, 10,
+            PointCloud2, self.lidar_topic, self._cloud_callback, _CLOUD_QUEUE_DEPTH,
         )
         self.pub = self.create_publisher(PointCloud2, "terrain_map", 10)
         self.occupancy_pub = self.create_publisher(OccupancyGrid, "terrain_occupancy", 10)
@@ -376,7 +390,7 @@ class TerrainToolkitNode(Node):
             self.destroy_subscription(self.sub)
             self.lidar_topic = new_values["lidar_topic"]
             self.sub = self.create_subscription(
-                PointCloud2, self.lidar_topic, self._cloud_callback, 10,
+                PointCloud2, self.lidar_topic, self._cloud_callback, _CLOUD_QUEUE_DEPTH,
             )
             self.get_logger().info(f"Resubscribed to {self.lidar_topic}")
 
@@ -398,7 +412,7 @@ class TerrainToolkitNode(Node):
         stamp = msg.header.stamp
 
         try:
-            self.tf_buffer.lookup_transform(
+            tf = self.tf_buffer.lookup_transform(
                 self.robot_frame_ga, source_frame, stamp,
                 timeout=rclpy.duration.Duration(seconds=1.0),
             )
@@ -406,8 +420,10 @@ class TerrainToolkitNode(Node):
             self.get_logger().warn(f"TF lookup failed: {exc}")
             return
 
-        points_xyz = self._transform_pointcloud_xyz(msg, self.robot_frame_ga, self.tf_buffer)
-        if points_xyz is None or points_xyz.shape[0] == 0:
+        # Sensor-frame points go to the pipeline as-is; the transform into the
+        # gravity-aligned grid frame and NaN removal happen on the GPU.
+        points_xyz = self.pointcloud2_to_xyz_array(msg)
+        if points_xyz.shape[0] == 0:
             self.get_logger().warn("Received empty / invalid point cloud — skipping.")
             return
 
@@ -415,7 +431,9 @@ class TerrainToolkitNode(Node):
 
         try:
             terrain_map: TerrainMap = self.pipe.process(
-                points_xyz, footprint_plane=footprint_plane,
+                points_xyz,
+                transform=self._transform_to_matrix(tf),
+                footprint_plane=footprint_plane,
             )
         except Exception as exc:
             self.get_logger().error(f"terrain_toolkit error: {exc}")
@@ -488,6 +506,26 @@ class TerrainToolkitNode(Node):
     # ------------------------------------------------------------------
 
     def pointcloud2_to_xyz_array(self, msg: PointCloud2) -> np.ndarray:
+        """(N, 3) float32 view of the x/y/z fields, without copying the cloud.
+
+        Non-finite rows are kept; the pipeline drops them on the GPU. Layouts the
+        fast path does not cover go through sensor_msgs_py.
+        """
+        fields = {f.name: f for f in msg.fields}
+        xyz = [fields.get(name) for name in ("x", "y", "z")]
+        if (not msg.is_bigendian
+                and msg.row_step == msg.width * msg.point_step
+                and all(f is not None and f.datatype == PointField.FLOAT32 and f.count == 1
+                        for f in xyz)):
+            dtype = np.dtype({
+                "names": ["x", "y", "z"],
+                "formats": ["<f4"] * 3,
+                "offsets": [f.offset for f in xyz],
+                "itemsize": msg.point_step,
+            })
+            cloud = np.frombuffer(msg.data, dtype=dtype, count=msg.width * msg.height)
+            return structured_to_unstructured(cloud, copy=False)
+
         pc = pc2.read_points(msg, field_names=("x", "y", "z"), skip_nans=True,
                              reshape_organized_cloud=False)
         if isinstance(pc, np.ndarray) and pc.dtype.names is not None:
@@ -618,40 +656,24 @@ class TerrainToolkitNode(Node):
         grid.info.origin.position.y = float(y_min)
         grid.info.origin.position.z = 0.0
         grid.info.origin.orientation.w = 1.0
-        grid.data = data.ravel().tolist()
+        # array.array('b') is taken as-is by the message; a list would be
+        # range-checked element by element in Python.
+        grid.data = array.array("b", data.tobytes())
         return grid
 
     # ------------------------------------------------------------------
     # TF transform
     # ------------------------------------------------------------------
 
-    def _transform_pointcloud_xyz(
-        self,
-        cloud_msg: PointCloud2,
-        target_frame: str,
-        tf_buffer: tf2_ros.Buffer,
-    ) -> np.ndarray | None:
-        try:
-            transform: TransformStamped = tf_buffer.lookup_transform(
-                target_frame, cloud_msg.header.frame_id, cloud_msg.header.stamp,
-            )
-        except TransformException as exc:
-            self.get_logger().error(f"TF lookup failed in transform: {exc}")
-            return None
-
-        points = self.pointcloud2_to_xyz_array(cloud_msg)
-        if points.size == 0:
-            return np.empty((0, 3), dtype=np.float32)
-
+    @staticmethod
+    def _transform_to_matrix(transform: TransformStamped) -> np.ndarray:
         t = transform.transform.translation
         r = transform.transform.rotation
         T = _quaternion_to_matrix(r.x, r.y, r.z, r.w)
         T[0, 3] = t.x
         T[1, 3] = t.y
         T[2, 3] = t.z
-
-        ones = np.ones((points.shape[0], 1), dtype=np.float32)
-        return (T @ np.hstack((points, ones)).T).T[:, :3]
+        return T
 
 
 def main(args=None) -> None:
@@ -660,7 +682,10 @@ def main(args=None) -> None:
     
     from rclpy.executors import MultiThreadedExecutor
 
-    executor = MultiThreadedExecutor()
+    # Two threads are enough: the cloud callback (which may block waiting for TF)
+    # and the TF listener's reentrant group. One thread per core only adds
+    # executor overhead.
+    executor = MultiThreadedExecutor(num_threads=2)
 
     executor.add_node(node)
 

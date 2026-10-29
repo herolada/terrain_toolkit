@@ -88,6 +88,26 @@ small kernels would shave < 0.1 ms total.
 - **Signed step-height**
   No speed impact, but quality improvement: drops and bumps are now scored
   independently with their own saturation thresholds.
+- **Host CPU load** (matters on Jetson, where the CPU — not the GPU — was the
+  bottleneck: the grid is tiny, so frames are launch- and wait-bound)
+  - Host waits use a `CU_EVENT_BLOCKING_SYNC` event (`cuda_sync.wait`) instead
+    of `wp.synchronize()`, which busy-spins a core for the whole GPU time.
+  - Inpaint → smooth → costs → inflation → obstacle count run from one CUDA
+    graph, captured once on the second frame (was: a fresh pyramid plus one
+    graph capture/instantiate per pyramid level every frame, ~250 launches).
+  - The inpaint fixed-mask is a kernel (was a D2H + numpy + H2D round-trip).
+  - Points go up through a pinned staging buffer; the optional sensor → grid
+    `transform`, NaN removal and `z_max` cut run on the GPU. Layers come down
+    with async copies into pinned buffers and a single wait.
+  - ROS node: zero-copy x/y/z view of the PointCloud2, no float64 numpy
+    transform (its multithreaded OpenBLAS call left worker threads spinning
+    on several cores — ~3 extra cores busy on an 8-core laptop),
+    `OPENBLAS_NUM_THREADS=1`, queue depth 1, `array('b')` for the
+    OccupancyGrid data.
+
+  On an MX250 laptop (200×200 grid, Ouster-like 131k-point frames): host CPU
+  per frame 11.6 → 5.8 ms (no outlier) and 19.9 → 6.7 ms (ROR) in the
+  library, with bit-identical outputs.
 
 ## Potential future wins
 
@@ -95,14 +115,9 @@ In rough order of ROI:
 
 1. **Sparse inpaint** — iterate only hole cells, or switch to a push-pull
    (normalized-convolution) pyramid. Expected 0.5–1 ms on typical lidar data.
-2. **Skip the `isfinite` readback in `_fixed_mask_from`** — currently
-   downloads the heightmap, builds the mask in numpy, uploads it back. Should
-   be a single kernel pass on-device.
-3. **Return `wp.array` optionally** — skip the entire download (0.58 ms) if
-   the consumer can accept GPU pointers directly.
-4. **Overlap upload / compute / download with streams** — halves steady-state
+2. **Overlap upload / compute / download with streams** — halves steady-state
    latency when streaming.
-5. **Kernel fusion across analyzer stages** — slope + step + roughness all
+3. **Kernel fusion across analyzer stages** — slope + step + roughness all
    read overlapping 3×3 to 5×5 elevation windows; fusing saves launches and
    redundant loads. Marginal (~0.1 ms) at the current grid size.
 

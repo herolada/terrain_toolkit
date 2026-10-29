@@ -6,6 +6,40 @@ wp.init()
 
 
 @wp.kernel
+def transform_filter_kernel(
+    points: wp.array(dtype=wp.vec3),
+    rot: wp.mat33,
+    trans: wp.vec3,
+    z_max: float,
+    out: wp.array(dtype=wp.vec3),
+    out_count: wp.array(dtype=wp.int32),
+):
+    """Transform points into the grid frame and compact the finite ones with
+    z <= z_max into `out` (order not preserved)."""
+    tid = wp.tid()
+    p = rot * points[tid] + trans
+    if not (wp.isfinite(p[0]) and wp.isfinite(p[1]) and wp.isfinite(p[2])):
+        return
+    if p[2] > z_max:
+        return
+    idx = wp.atomic_add(out_count, 0, 1)
+    out[idx] = p
+
+
+@wp.kernel
+def finite_mask_kernel(
+    src: wp.array2d(dtype=wp.float32),
+    mask: wp.array2d(dtype=wp.int32),
+):
+    """mask = 1 where src is finite (a measured cell), else 0."""
+    i, j = wp.tid()
+    if wp.isfinite(src[i, j]):
+        mask[i, j] = 1
+    else:
+        mask[i, j] = 0
+
+
+@wp.kernel
 def rasterize_all_kernel(
     points: wp.array(dtype=wp.vec3),
     xmin: float,

@@ -106,21 +106,26 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument(
             "trav_step_window_radius_m",
             default_value="0.5",
+            default_value="0.5",
             description="Morphological window radius for step detection (m)",
         ),
         DeclareLaunchArgument(
             "trav_roughness_window_radius_m",
             default_value="0.5",
+            default_value="0.5",
             description="Window radius for roughness std-dev (m)",
         ),
         DeclareLaunchArgument(
             "trav_slope_weight", default_value="0.3", description="Slope weight in combined cost"
+            "trav_slope_weight", default_value="0.3", description="Slope weight in combined cost"
         ),
         DeclareLaunchArgument(
+            "trav_step_weight", default_value="0.4", description="Step weight in combined cost"
             "trav_step_weight", default_value="0.4", description="Step weight in combined cost"
         ),
         DeclareLaunchArgument(
             "trav_roughness_weight",
+            default_value="0.3",
             default_value="0.3",
             description="Roughness weight in combined cost",
         ),
@@ -234,6 +239,7 @@ def generate_launch_description() -> LaunchDescription:
                 "map_frame": lc("map_frame"),
                 "robot_frame_ga": lc("robot_frame_ga"),
                 "robot_frame": lc("robot_frame"),
+                "robot_frame_ga": lc("robot_frame_ga"),
                 "square_half_size": lc("square_half_size"),
                 # Grid
                 "resolution": lc("resolution"),

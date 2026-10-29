@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import numpy as np
 import warp as wp
 
+from .. import cuda_sync
 from .kernels import (
     compact_inliers_kernel,
     mean_dist_in_radius_kernel,
@@ -166,7 +167,7 @@ class StatisticalOutlierFilter:
                     self._count,
                 ],
             )
-            wp.synchronize()
+            cuda_sync.wait(self.device)
             s = float(self._sum.numpy()[0])
             ssq = float(self._sum_sq.numpy()[0])
             count_valid = int(self._count.numpy()[0])
@@ -193,7 +194,7 @@ class StatisticalOutlierFilter:
                 ],
                 outputs=[self._out_counter, self._out_pts],
             )
-            wp.synchronize()
+            cuda_sync.wait(self.device)
             n_out = int(self._out_counter.numpy()[0])
 
             if return_numpy:
@@ -295,7 +296,7 @@ class RadiusOutlierFilter:
                 ],
                 outputs=[self._out_counter, self._out_pts],
             )
-            wp.synchronize()
+            cuda_sync.wait(self.device)
             n_out = int(self._out_counter.numpy()[0])
 
             if return_numpy:

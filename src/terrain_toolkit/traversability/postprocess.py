@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import numpy as np
 import warp as wp
 
+from .. import cuda_sync
 from ..grid_utils import meters_to_cells
 from .kernels import (
     count_obstacles_kernel,
@@ -145,6 +146,12 @@ class TemporalGate:
 
     def is_stable(self, cost_map: wp.array) -> bool:
         """Count obstacles in `cost_map` and apply the growth hysteresis."""
+        self.count(cost_map)
+        return self.decide()
+
+    def count(self, cost_map: wp.array) -> None:
+        """Launch the obstacle count only (no host sync — graph-capturable).
+        Follow with `decide()` to read it back and apply the hysteresis."""
         self._num_obstacles.zero_()
         wp.launch(
             count_obstacles_kernel,
@@ -153,7 +160,10 @@ class TemporalGate:
             outputs=[self._num_obstacles],
             device=self.device,
         )
-        wp.synchronize()
+
+    def decide(self) -> bool:
+        """Read back the count launched by `count()` and apply the hysteresis."""
+        cuda_sync.wait(self.device)
         current = int(self._num_obstacles.numpy()[0])
 
         cfg = self.config
